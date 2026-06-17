@@ -117,7 +117,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
 
-    # --- token helpers
+    # token helpers
     def peek(self) -> Token:
         return self.tokens[self.pos]
 
@@ -332,9 +332,7 @@ class Parser:
             op = tok.value
             self.advance()
             right = self.parse_expression(prec + 1)
-            # pipeline operator '>' transforms into a call where left becomes first arg
             if op == ">":
-                # if right is identifier, treat as call with no args
                 if isinstance(right, Identifier):
                     call = Call(right, [])
                 else:

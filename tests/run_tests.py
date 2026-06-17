@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-# Ensure tests directory is on sys.path so imports work when running from repo root
 sys.path.insert(0, str(Path(__file__).parent))
 from test_parser import test_into_postfix, test_pipe_and_into
 
