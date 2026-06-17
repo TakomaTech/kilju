@@ -1,0 +1,7 @@
+node_modules
+.vscode
+*.code-workspace
+out
+dist
+npm-debug.log
+.DS_Store

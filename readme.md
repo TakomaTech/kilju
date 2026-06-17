@@ -44,3 +44,13 @@ while count < 5
 	format count
 	count + 1 into count
 ```
+
+## VS Code Extension
+
+This repository includes a Kilju VS Code extension with syntax highlighting and `.kj` support.
+
+Usage:
+
+1. Open a `.kj` file in VS Code.
+2. Pick `Kilju` from the language mode selector.
+3. The editor highlights keywords, strings, numbers, operators, comments, and punctuation.
