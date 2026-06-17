@@ -3,10 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Any
 
-from kilju_lexer import lex, TokenKind, Token
+from lexer import lex, TokenKind, Token
 
 
-# --- AST Nodes ---
 @dataclass
 class Node:
     pass
@@ -118,7 +117,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
 
-    # --- token helpers ---
+    # --- token helpers
     def peek(self) -> Token:
         return self.tokens[self.pos]
 
@@ -143,6 +142,10 @@ class Parser:
         self.skip_newlines()
         while self.peek().kind != TokenKind.EOF:
             stmt = self.parse_statement()
+            # attach indented `into` block to previous expression if present
+            if isinstance(stmt, Expr) and self._peek_block_is_simple_into():
+                target = self._consume_indented_into_target()
+                stmt = IntoStmt(stmt, target)
             body.append(stmt)
             self.skip_newlines()
         return Program(body)
@@ -329,7 +332,24 @@ class Parser:
             op = tok.value
             self.advance()
             right = self.parse_expression(prec + 1)
-            left = BinaryOp(left, op, right)
+            # pipeline operator '>' transforms into a call where left becomes first arg
+            if op == ">":
+                # if right is identifier, treat as call with no args
+                if isinstance(right, Identifier):
+                    call = Call(right, [])
+                else:
+                    call = right
+
+                if isinstance(call, Call):
+                    callee = call.callee
+                    args = [left] + call.args
+                else:
+                    callee = call
+                    args = [left]
+
+                left = Call(callee, args)
+            else:
+                left = BinaryOp(left, op, right)
 
         return left
 
@@ -381,6 +401,55 @@ class Parser:
 
         raise ParseError(f"Unexpected token in expression: {tok}")
 
+    def _peek_block_is_simple_into(self) -> bool:
+        # Look ahead to see if next tokens form INDENT -> into statement -> DEDENT
+        pos = self.pos
+        if pos >= len(self.tokens):
+            return False
+        if self.tokens[pos].kind != TokenKind.INDENT:
+            return False
+        p = pos + 1
+        while p < len(self.tokens) and self.tokens[p].kind == TokenKind.NEWLINE:
+            p += 1
+        if p >= len(self.tokens):
+            return False
+        if self.tokens[p].kind != TokenKind.KEYWORD or self.tokens[p].value != "into":
+            return False
+        q = p + 1
+        if q < len(self.tokens) and self.tokens[q].kind == TokenKind.PUNCTUATION and self.tokens[q].value == "(":
+            q += 1
+            if q < len(self.tokens) and self.tokens[q].kind == TokenKind.IDENTIFIER:
+                q += 1
+                if q < len(self.tokens) and self.tokens[q].kind == TokenKind.PUNCTUATION and self.tokens[q].value == ")":
+                    return True
+                return False
+            return False
+        if q < len(self.tokens) and self.tokens[q].kind == TokenKind.IDENTIFIER:
+            return True
+        return False
+
+    def _consume_indented_into_target(self) -> str:
+        # assumes the peek check passed; consumes INDENT and the into stmt and DEDENT
+        self.expect(TokenKind.INDENT)
+        self.skip_newlines()
+        self.expect(TokenKind.KEYWORD, "into")
+        name = None
+        if self.peek().kind == TokenKind.PUNCTUATION and self.peek().value == "(":
+            self.advance()
+            name = self.expect(TokenKind.IDENTIFIER).value
+            self.expect(TokenKind.PUNCTUATION, ")")
+        else:
+            name = self.expect(TokenKind.IDENTIFIER).value
+        # consume until DEDENT
+        while self.peek().kind != TokenKind.DEDENT:
+            if self.peek().kind == TokenKind.NEWLINE:
+                self.advance()
+                continue
+            break
+        if self.peek().kind == TokenKind.DEDENT:
+            self.advance()
+        return name
+
 
 def parse_source(source: str) -> Program:
     tokens = lex(source)
@@ -389,9 +458,12 @@ def parse_source(source: str) -> Program:
 
 
 if __name__ == "__main__":
-    import pathlib
+    import pathlib, sys
 
-    sample = pathlib.Path("examples/test.kj")
+    base = pathlib.Path(__file__).parent
+    sample = base / "examples" / "test.kj"
+    if not sample.exists() and len(sys.argv) > 1:
+        sample = pathlib.Path(sys.argv[1])
     src = sample.read_text()
     program = parse_source(src)
     print(program)

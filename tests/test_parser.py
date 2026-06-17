@@ -1,4 +1,4 @@
-from kilju_parser import parse_source, IntoStmt, BinaryOp, Identifier
+from parser import parse_source, IntoStmt, BinaryOp, Identifier, Call
 
 
 def test_into_postfix():
@@ -15,5 +15,5 @@ def test_pipe_and_into():
     program = parse_source(src)
     stmt = program.body[0]
     assert isinstance(stmt, IntoStmt)
-    assert isinstance(stmt.value, BinaryOp)
+    assert isinstance(stmt.value, Call)
     assert stmt.target == 'date'
