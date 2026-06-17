@@ -1,0 +1,20 @@
+import "html"
+
+~(mut) page = null
+~(mut) body = null
+~(mut) header = null
+
+html > createElement("html") into page
+html > createChild(page, "head") into head
+html > createChild(head, "title") into title_elem
+html > addText(title_elem, "Kilju Web Page")
+
+html > createChild(page, "body") into body
+html > createChild(body, "h1") into h1_elem
+html > addText(h1_elem, "Welcome to Kilju")
+
+html > createChild(body, "p") into p_elem
+html > addText(p_elem, "This is a dynamically generated HTML page!")
+
+html > stringify(page) into markup
+format markup
