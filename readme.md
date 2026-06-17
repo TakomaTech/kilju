@@ -47,7 +47,7 @@ while count < 5
 
 ## VS Code Extension
 
-This repository includes a Kilju VS Code extension with syntax highlighting and `.kj` support.
+This repository also includes a Kilju VS Code extension with syntax highlighting and `.kj` support.
 
 Usage:
 
