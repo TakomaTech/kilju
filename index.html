@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kilju Online Compiler</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kilju Online Compiler</h1>
+            <p>Write and run Kilju code in your browser</p>
+        </header>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h2>Code editor</h2>
+                    <button id="run-btn" class="btn btn-primary">Run Code</button>
+                </div>
+                <textarea id="code-input" placeholder="Write your Kilju code here...">format "Hello, World"
+</textarea>
+            </div>
+
+            <div class="output-panel">
+                <div class="panel-header">
+                    <h2>Output</h2>
+                    <button id="clear-btn" class="btn btn-secondary">Clear</button>
+                </div>
+                <pre id="output"><span class="hint">Run code to see output here...</span></pre>
+            </div>
+        </div>
+
+        <footer>
+            <p>Kilju Language | <a href="#" onclick="showExamples()">Examples</a> | <a href="#" onclick="showDocs()">Docs</a></p>
+        </footer>
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">Examples</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
