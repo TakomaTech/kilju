@@ -1,7 +1,0 @@
-import "localtime"
-
-~(mut) date = null
-
-localtime > getComputerDate()
-	into (date)
-format date
