@@ -20,34 +20,190 @@ function runCode() {
     runBtn.textContent = 'Running...';
     output.textContent = 'Executing...';
 
-    fetch('/api/run', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ code: code })
-    })
-    .then(response => response.text().then(text => {
-        try {
-            return JSON.parse(text);
-        } catch {
-            return { success: false, error: text || 'Invalid server response' };
+    const result = runLocalCode(code);
+    if (result.success) {
+        output.textContent = result.output;
+    } else {
+        output.textContent = 'Error: ' + result.error;
+    }
+
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run Code';
+}
+
+function runLocalCode(code) {
+    const state = {
+        vars: {},
+        output: []
+    };
+
+    const lines = code.replace(/\r\n/g, '\n').split('\n');
+
+    try {
+        executeBlock(lines, 0, state, null);
+        return { success: true, output: state.output.join('\n') };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+function executeBlock(lines, startIndex, state, endToken) {
+    for (let i = startIndex; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line || line.startsWith('//')) continue;
+
+        if (endToken && line === endToken) {
+            return i;
         }
-    }))
-    .then(data => {
-        if (data.success) {
-            output.textContent = data.output;
+
+        if (line.startsWith('format ')) {
+            const args = parseArgs(line.slice(7));
+            const values = args.map(arg => evaluateExpression(arg, state));
+            state.output.push(values.join(' '));
+            continue;
+        }
+
+        if (line.startsWith('~(mut) ')) {
+            const assign = line.slice(7).trim();
+            const [left, right] = assign.split(/\s*=\s*/);
+            if (!left || right === undefined) {
+                throw new Error('Invalid assignment syntax');
+            }
+            state.vars[left.trim()] = evaluateExpression(right, state);
+            continue;
+        }
+
+        if (line.includes(' into ')) {
+            const parts = line.split(/\s+into\s+/);
+            if (parts.length !== 2) {
+                throw new Error('Invalid into assignment');
+            }
+            const value = evaluateExpression(parts[0], state);
+            const name = parts[1].trim();
+            state.vars[name] = value;
+            continue;
+        }
+
+        if (line.startsWith('if ')) {
+            const condition = line.slice(3).trim();
+            const thenStart = i + 1;
+            let elseIndex = null;
+            let endIf = null;
+            for (let j = thenStart; j < lines.length; j++) {
+                const trimmed = lines[j].trim();
+                if (trimmed === 'else') {
+                    elseIndex = j;
+                }
+                if (trimmed === 'end if') {
+                    endIf = j;
+                    break;
+                }
+            }
+            if (endIf === null) throw new Error('Missing end if');
+            const conditionValue = evaluateExpression(condition, state);
+            if (conditionValue) {
+                executeBlock(lines, thenStart, state, elseIndex || 'end if');
+            } else if (elseIndex !== null) {
+                executeBlock(lines, elseIndex + 1, state, 'end if');
+            }
+            i = endIf;
+            continue;
+        }
+
+        if (line.startsWith('while ')) {
+            const condition = line.slice(6).trim();
+            const bodyStart = i + 1;
+            let endWhile = null;
+            for (let j = bodyStart; j < lines.length; j++) {
+                if (lines[j].trim() === 'end while') {
+                    endWhile = j;
+                    break;
+                }
+            }
+            if (endWhile === null) throw new Error('Missing end while');
+            while (evaluateExpression(condition, state)) {
+                executeBlock(lines, bodyStart, state, 'end while');
+            }
+            i = endWhile;
+            continue;
+        }
+
+        if (line.startsWith('loop')) {
+            const bodyStart = i + 1;
+            let endLoop = null;
+            for (let j = bodyStart; j < lines.length; j++) {
+                if (lines[j].trim() === 'end loop') {
+                    endLoop = j;
+                    break;
+                }
+            }
+            if (endLoop === null) throw new Error('Missing end loop');
+            const loopLimit = 1000;
+            let count = 0;
+            while (true) {
+                if (count++ > loopLimit) throw new Error('Infinite loop detected');
+                executeBlock(lines, bodyStart, state, 'end loop');
+            }
+        }
+
+        if (line.startsWith('import ')) {
+            continue;
+        }
+
+        throw new Error('Unsupported Kilju statement: ' + line);
+    }
+    return lines.length;
+}
+
+function parseArgs(text) {
+    const args = [];
+    let current = '';
+    let inString = false;
+    let quoteChar = '';
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if ((ch === '"' || ch === "'") && text[i - 1] !== '\\') {
+            if (inString && ch === quoteChar) {
+                inString = false;
+            } else if (!inString) {
+                inString = true;
+                quoteChar = ch;
+            }
+        }
+        if (ch === ',' && !inString) {
+            args.push(current.trim());
+            current = '';
         } else {
-            output.textContent = 'Error: ' + data.error;
+            current += ch;
         }
-    })
-    .catch(error => {
-        output.textContent = 'Error: ' + error.message;
-    })
-    .finally(() => {
-        runBtn.disabled = false;
-        runBtn.textContent = 'Run Code';
+    }
+    if (current.trim()) args.push(current.trim());
+    return args;
+}
+
+function evaluateExpression(expr, state) {
+    expr = expr.trim();
+    if (/^".*"$/s.test(expr) || /^'.*'$/s.test(expr)) {
+        return expr.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'");
+    }
+    if (/^-?\d+(\.\d+)?$/.test(expr)) {
+        return Number(expr);
+    }
+    const transformed = expr.replace(/([A-Za-z_][A-Za-z0-9_]*)/g, (name) => {
+        if (name === 'true' || name === 'false' || name === 'null') return name;
+        if (Object.prototype.hasOwnProperty.call(state.vars, name)) {
+            return JSON.stringify(state.vars[name]);
+        }
+        throw new Error('Unknown variable: ' + name);
     });
+    if (/[^0-9A-Za-z_\s\+\-\*\/\%\(\)\=\!\<\>\&\|\"\'\,\.]/.test(transformed)) {
+        throw new Error('Invalid expression: ' + expr);
+    }
+    try {
+        return Function('return (' + transformed + ');')();
+    } catch (error) {
+        throw new Error('Error evaluating expression: ' + expr);
+    }
 }
 
 function clearOutput() {
