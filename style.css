@@ -92,13 +92,66 @@ body {
     flex: 1;
     padding: 15px;
     border: none;
-    background: #ffffff;
+    background: transparent;
     font-family: 'Courier New', monospace;
     font-size: 14px;
-    color: #333;
+    color: transparent;
+    text-shadow: 0 0 0 rgba(0, 0, 0, 0.88);
     resize: none;
     outline: none;
     min-height: 0;
+    position: relative;
+    z-index: 2;
+    caret-color: #111;
+}
+
+.editor-shell {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+
+#code-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 15px;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    pointer-events: none;
+    color: transparent;
+}
+
+#code-highlight .token-keyword {
+    color: #7c3aed;
+    font-weight: 700;
+}
+
+#code-highlight .token-string {
+    color: #0284c7;
+}
+
+#code-highlight .token-number {
+    color: #ea580c;
+}
+
+#code-highlight .token-comment {
+    color: #6b7280;
+}
+
+#code-highlight .token-operator {
+    color: #15803d;
+}
+
+#code-highlight .token-identifier {
+    color: #111827;
 }
 
 #output {
@@ -112,6 +165,12 @@ body {
     line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
+}
+
+#output.error {
+    background: #330b0f;
+    color: #f9c0c0;
+    border-left: 4px solid #f87171;
 }
 
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

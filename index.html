@@ -24,7 +24,10 @@
         <div class="editor-container">
             <div class="editor-panel">
                 <div class="file-tabs" id="file-tabs"></div>
-                <textarea id="code-input" placeholder="Write your Kilju code here..."></textarea>
+                <div class="editor-shell">
+                    <pre id="code-highlight" aria-hidden="true"></pre>
+                    <textarea id="code-input" placeholder="Write your Kilju code here..."></textarea>
+                </div>
             </div>
 
             <div class="output-panel">
