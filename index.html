@@ -13,14 +13,18 @@
             <p>Write and run Kilju code in your browser</p>
         </header>
 
+        <div class="toolbar">
+            <button id="run-btn" class="btn btn-primary">Run</button>
+            <button id="new-file-btn" class="btn btn-secondary">New File</button>
+            <button id="import-btn" class="btn btn-secondary">Import</button>
+            <button id="export-btn" class="btn btn-secondary">Export</button>
+            <span class="hint toolbar-hint">Create multiple Kilju files and export them as JSON.</span>
+        </div>
+
         <div class="editor-container">
             <div class="editor-panel">
-                <div class="panel-header">
-                    <h2>Code editor</h2>
-                    <button id="run-btn" class="btn btn-primary">Run Code</button>
-                </div>
-                <textarea id="code-input" placeholder="Write your Kilju code here...">format "Hello, World"
-</textarea>
+                <div class="file-tabs" id="file-tabs"></div>
+                <textarea id="code-input" placeholder="Write your Kilju code here..."></textarea>
             </div>
 
             <div class="output-panel">
@@ -36,6 +40,8 @@
             <p>Kilju Language | <a href="#" onclick="showExamples()">Examples</a> | <a href="#" onclick="showDocs()">Docs</a></p>
         </footer>
     </div>
+
+    <input id="file-input" type="file" accept=".json,.kj,.kilju" hidden />
 
     <div id="modal" class="modal hidden">
         <div class="modal-content">

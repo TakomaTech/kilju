@@ -1,16 +1,161 @@
 const codeInput = document.getElementById('code-input');
 const runBtn = document.getElementById('run-btn');
+const newFileBtn = document.getElementById('new-file-btn');
+const importBtn = document.getElementById('import-btn');
+const exportBtn = document.getElementById('export-btn');
 const clearBtn = document.getElementById('clear-btn');
 const output = document.getElementById('output');
+const fileTabs = document.getElementById('file-tabs');
+const fileInput = document.getElementById('file-input');
 const modal = document.getElementById('modal');
 const modalBody = document.getElementById('modal-body');
 const modalTitle = document.getElementById('modal-title');
 
+let files = [
+    { name: 'main.kj', content: 'format "Hello, World"' }
+];
+let activeFileIndex = 0;
+
 runBtn.addEventListener('click', runCode);
+newFileBtn.addEventListener('click', addFile);
+importBtn.addEventListener('click', importFiles);
+exportBtn.addEventListener('click', exportFiles);
 clearBtn.addEventListener('click', clearOutput);
+fileInput.addEventListener('change', handleFileImport);
+codeInput.addEventListener('input', () => {
+    files[activeFileIndex].content = codeInput.value;
+});
+
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        runCode();
+    }
+});
+
+initEditor();
+
+function initEditor() {
+    renderFileTabs();
+    updateEditor();
+}
+
+function renderFileTabs() {
+    fileTabs.innerHTML = '';
+    files.forEach((file, index) => {
+        const tab = document.createElement('div');
+        tab.className = 'file-tab' + (index === activeFileIndex ? ' active' : '');
+        tab.addEventListener('click', () => setActiveFile(index));
+
+        const label = document.createElement('span');
+        label.textContent = file.name;
+        tab.appendChild(label);
+
+        if (files.length > 1) {
+            const closeButton = document.createElement('button');
+            closeButton.className = 'close-file';
+            closeButton.textContent = '×';
+            closeButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                closeFile(index);
+            });
+            tab.appendChild(closeButton);
+        }
+
+        fileTabs.appendChild(tab);
+    });
+}
+
+function setActiveFile(index) {
+    activeFileIndex = index;
+    renderFileTabs();
+    updateEditor();
+}
+
+function updateEditor() {
+    codeInput.value = files[activeFileIndex].content;
+    codeInput.focus();
+}
+
+function addFile() {
+    const base = 'file';
+    let count = 1;
+    let newName = `${base}${count}.kj`;
+    while (files.some(file => file.name === newName)) {
+        count += 1;
+        newName = `${base}${count}.kj`;
+    }
+    files.push({ name: newName, content: '// New Kilju file\n' });
+    activeFileIndex = files.length - 1;
+    renderFileTabs();
+    updateEditor();
+}
+
+function closeFile(index) {
+    if (files.length === 1) {
+        return;
+    }
+    files.splice(index, 1);
+    if (activeFileIndex >= files.length) {
+        activeFileIndex = files.length - 1;
+    }
+    renderFileTabs();
+    updateEditor();
+}
+
+function importFiles() {
+    fileInput.value = '';
+    fileInput.click();
+}
+
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        if (file.type === 'application/json' || file.name.endsWith('.json')) {
+            try {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                    files = parsed.map(item => ({
+                        name: item.name || 'imported.kj',
+                        content: item.content || ''
+                    }));
+                } else if (parsed.name && parsed.content !== undefined) {
+                    files = [{ name: parsed.name, content: parsed.content }];
+                } else {
+                    throw new Error('Invalid JSON file format');
+                }
+            } catch (err) {
+                output.textContent = 'Error: ' + err.message;
+                return;
+            }
+        } else {
+            files = [{ name: file.name, content: text }];
+        }
+        activeFileIndex = 0;
+        renderFileTabs();
+        updateEditor();
+        output.textContent = 'Imported ' + file.name;
+    };
+    reader.readAsText(file);
+}
+
+function exportFiles() {
+    const payload = files.length === 1 ? files[0] : files;
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = files.length === 1 ? files[0].name.replace(/\.[^/.]+$/, '') + '.json' : 'kilju-files.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+}
 
 function runCode() {
-    const code = codeInput.value;
+    const code = files[activeFileIndex].content;
     if (!code.trim()) {
         output.innerHTML = '<span class="hint">Please write some Kilju code first</span>';
         return;
@@ -28,7 +173,7 @@ function runCode() {
     }
 
     runBtn.disabled = false;
-    runBtn.textContent = 'Run Code';
+    runBtn.textContent = 'Run';
 }
 
 function runLocalCode(code) {
@@ -121,7 +266,10 @@ function executeBlock(lines, startIndex, state, endToken) {
                 }
             }
             if (endWhile === null) throw new Error('Missing end while');
+            const loopLimit = 1000;
+            let count = 0;
             while (evaluateExpression(condition, state)) {
+                if (count++ > loopLimit) throw new Error('Infinite loop detected');
                 executeBlock(lines, bodyStart, state, 'end while');
             }
             i = endWhile;
@@ -144,6 +292,7 @@ function executeBlock(lines, startIndex, state, endToken) {
                 if (count++ > loopLimit) throw new Error('Infinite loop detected');
                 executeBlock(lines, bodyStart, state, 'end loop');
             }
+            continue;
         }
 
         if (line.startsWith('import ')) {
