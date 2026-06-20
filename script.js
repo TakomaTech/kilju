@@ -27,7 +27,13 @@ function runCode() {
         },
         body: JSON.stringify({ code: code })
     })
-    .then(response => response.json())
+    .then(response => response.text().then(text => {
+        try {
+            return JSON.parse(text);
+        } catch {
+            return { success: false, error: text || 'Invalid server response' };
+        }
+    }))
     .then(data => {
         if (data.success) {
             output.textContent = data.output;
@@ -57,20 +63,41 @@ function showExamples() {
         'Conditional': 'if 5 > 3\n    format "Five is greater"\nelse\n    format "Not greater"\nend if'
     };
 
-    let html = '<div style="display: grid; gap: 15px;">';
+    const container = document.createElement('div');
+    container.style.display = 'grid';
+    container.style.gap = '15px';
+
     for (const [name, code] of Object.entries(examples)) {
-        html += `
-            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-                <h3>${name}</h3>
-                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">${escapeHtml(code)}</pre>
-                <button class="btn btn-primary" style="margin-top: 10px;" onclick="insertExample('${escapeHtml(code, true)}')">Use This</button>
-            </div>
-        `;
+        const card = document.createElement('div');
+        card.style.border = '1px solid #ddd';
+        card.style.padding = '10px';
+        card.style.borderRadius = '4px';
+
+        const title = document.createElement('h3');
+        title.textContent = name;
+        card.appendChild(title);
+
+        const pre = document.createElement('pre');
+        pre.style.background = '#f5f5f5';
+        pre.style.padding = '10px';
+        pre.style.borderRadius = '4px';
+        pre.style.overflowX = 'auto';
+        pre.textContent = code;
+        card.appendChild(pre);
+
+        const button = document.createElement('button');
+        button.className = 'btn btn-primary';
+        button.style.marginTop = '10px';
+        button.textContent = 'Use This';
+        button.addEventListener('click', () => insertExample(code));
+        card.appendChild(button);
+
+        container.appendChild(card);
     }
-    html += '</div>';
 
     modalTitle.textContent = 'Examples';
-    modalBody.innerHTML = html;
+    modalBody.innerHTML = '';
+    modalBody.appendChild(container);
     modal.classList.remove('hidden');
 }
 
